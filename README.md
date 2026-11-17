@@ -120,6 +120,35 @@ O sistema combina dados da **Open-Meteo**, **INMET** e da **API Pública do Rada
 
 ## 🚀 Como Executar e Auditar o Projeto
 
+### Arquitetura Java em camadas
+
+O backend Java mantém as responsabilidades separadas:
+
+```text
+JavaFX / controller (apresentação)
+              ↓
+          service (casos de uso e regras)
+              ↓
+    repository (contratos de persistência)
+              ↓
+infrastructure/persistence (adaptadores em memória)
+
+model (entidades e tipos do domínio)
+```
+
+Os serviços dependem das interfaces de repositório, e não dos mapas/coleções de armazenamento. A implementação atual em memória pode ser substituída por um adaptador de banco sem alterar a API nem o painel. A API recebe DTOs validados e usa um handler global para respostas de erro; os DTOs de usuário não expõem o hash da senha.
+
+### Aplicação Desktop JavaFX
+
+O painel desktop é implementado em JavaFX e usa os mesmos serviços Spring Boot da API. É necessário ter Java 17+ e Maven instalados:
+
+```bash
+mvn test
+mvn javafx:run
+```
+
+O comando `mvn javafx:run` abre o painel com as seções de visão geral, plantio e autonomia hídrica, reservatórios e comunidade. A API REST pode ser iniciada separadamente com `mvn spring-boot:run` na porta 3000.
+
 ### 1. Instalar dependências
 ```bash
 npm install
