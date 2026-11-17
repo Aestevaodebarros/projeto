@@ -22,6 +22,8 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.Scene;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
@@ -105,6 +107,7 @@ public class ManejoCaatingueiroDesktop extends Application {
         stage.setMinWidth(980);
         stage.setMinHeight(680);
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.show();
         showLogin();
     }
@@ -125,6 +128,7 @@ public class ManejoCaatingueiroDesktop extends Application {
         form.setPadding(new Insets(36));
         form.getStyleClass().add("surface-card");
         form.setAlignment(Pos.CENTER_LEFT);
+        ImageView loginLogo = imageView("/images/logo.png", 150, 150);
         Label title = new Label("Acesse sua propriedade");
         title.getStyleClass().add("page-title");
         TextField email = new TextField();
@@ -147,8 +151,23 @@ public class ManejoCaatingueiroDesktop extends Application {
         Button register = new Button("Criar cadastro");
         register.getStyleClass().add("button-secondary");
         register.setOnAction(event -> showRegistration());
-        form.getChildren().addAll(title, email, password, enter, register, status);
-        root.setCenter(wrap(form));
+        form.getChildren().addAll(loginLogo, title, new Label("Água, chuva e plantio em diálogo com a realidade do Semiárido."), email, password, enter, register, status);
+        VBox story = new VBox(18);
+        story.setAlignment(Pos.CENTER);
+        story.setPadding(new Insets(28));
+        story.getStyleClass().add("login-story");
+        ImageView landscape = imageView("/images/arte-agua-acudes.png", 390, 300);
+        Label storyTitle = new Label("Cuidar da água é\npreparar a próxima safra.");
+        storyTitle.getStyleClass().add("story-title");
+        Label storyText = new Label("Acompanhe a chuva da sua localidade, registre seus reservatórios e consulte informações para apoiar suas decisões.");
+        storyText.getStyleClass().add("story-copy");
+        storyText.setWrapText(true);
+        story.getChildren().addAll(landscape, storyTitle, storyText);
+        HBox loginLayout = new HBox(28, story, form);
+        loginLayout.setAlignment(Pos.CENTER);
+        loginLayout.setPadding(new Insets(28));
+        HBox.setHgrow(story, Priority.ALWAYS);
+        root.setCenter(wrap(loginLayout));
     }
 
     private void showRegistration() {
@@ -253,15 +272,18 @@ public class ManejoCaatingueiroDesktop extends Application {
         sidebar.setPadding(new Insets(24, 16, 20, 16));
         sidebar.setPrefWidth(245);
 
-        Label brand = new Label("🌵  Manejo\n     Caatingueiro");
+        ImageView brandMark = imageView("/images/logo-mark.png", 54, 54);
+        Label brand = new Label("Manejo\nCaatingueiro");
         brand.getStyleClass().add("brand");
+        VBox brandBlock = new VBox(6, brandMark, brand);
         Label section = new Label("ÁREA DO PRODUTOR");
         section.getStyleClass().add("nav-section");
         sidebar.getChildren().addAll(
-                brand,
+                brandBlock,
                 new Separator(),
                 section,
                 navButton("Visão geral", this::showDashboard, true),
+                navButton("Meu perfil", this::showProfile, false),
                 navButton("Plantio e água", this::showPlanting, false),
                 navButton("Reservatórios", this::showReservoirs, false),
                 navButton("Comunidade", this::showCommunity, false),
@@ -413,7 +435,8 @@ public class ManejoCaatingueiroDesktop extends Application {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label status = new Label(String.valueOf(water.get("status")));
         status.getStyleClass().add("status-pill");
-        banner.getChildren().addAll(new Label("☀"), text, spacer, status);
+        ImageView illustration = imageView("/images/arte-chuva-terra.png", 118, 92);
+        banner.getChildren().addAll(illustration, text, spacer, status);
         return banner;
     }
 
@@ -446,6 +469,11 @@ public class ManejoCaatingueiroDesktop extends Application {
 
     private Node buildCropSummary(Map<String, Object> water) {
         VBox card = sectionCard("Viabilidade das culturas", "Indicação consultiva para a sua propriedade");
+        String waterStatus = String.valueOf(water.get("statusAutonomia"));
+        String artwork = waterStatus.toUpperCase().contains("SEGURO") ? "/images/roca-favoravel.png"
+                : waterStatus.toUpperCase().contains("ATENCAO") ? "/images/roca-atencao.png"
+                : "/images/roca-estiagem.png";
+        card.getChildren().add(imageView(artwork, 170, 112));
         Object rawCrops = water.get("culturas");
         if (rawCrops instanceof List<?> crops) {
             for (Object item : crops) {
@@ -471,6 +499,47 @@ public class ManejoCaatingueiroDesktop extends Application {
         source.getStyleClass().add("source-note");
         card.getChildren().add(source);
         return card;
+    }
+
+    private void showProfile() {
+        Usuario user = requireCurrentUser();
+        content = new VBox(18);
+        content.setPadding(new Insets(28));
+        Label title = new Label("Meu perfil e propriedade");
+        title.getStyleClass().add("page-title");
+        Label subtitle = new Label("Confira os dados informados no cadastro. Para alterar informações, utilize o fluxo de cadastro/atualização disponível na versão de serviço.");
+        subtitle.getStyleClass().add("muted");
+        VBox personal = sectionCard("Dados do agricultor", "Identificação da conta");
+        personal.getChildren().addAll(
+                profileLine("Nome", user.getNome()),
+                profileLine("E-mail", user.getEmail()),
+                profileLine("Telefone", user.getTelefone()),
+                profileLine("Perfil de acesso", String.valueOf(user.getPerfil())),
+                profileLine("Abastecimento", String.valueOf(user.getAbastecimento())),
+                profileLine("Consentimento de localização", user.isConsentimentoLocalizacao() ? "Autorizado" : "Não autorizado")
+        );
+        VBox productive = sectionCard("Perfil produtivo", "Dados utilizados na estimativa de consumo hídrico");
+        var pp = user.getPerfilProdutivo();
+        if (pp != null) {
+            productive.getChildren().addAll(
+                    profileLine("Pessoas na família", String.valueOf(pp.getNumeroPessoas())),
+                    profileLine("Bovinos", String.valueOf(pp.getBovinos())),
+                    profileLine("Caprinos/ovinos", String.valueOf(pp.getCaprinosOvinos())),
+                    profileLine("Aves", String.valueOf(pp.getAves())),
+                    profileLine("Área irrigada", String.valueOf(pp.getAreaIrrigadaM2()) + " m²"),
+                    profileLine("Cavalos/jumentos", String.valueOf(pp.getCavalosJumentos())),
+                    profileLine("Suínos", String.valueOf(pp.getSuinos()))
+            );
+        }
+        content.getChildren().addAll(title, subtitle, personal, productive);
+        root.setCenter(wrap(content));
+        showFeedback("Dados do perfil carregados da conta local.");
+    }
+
+    private Label profileLine(String label, String value) {
+        Label line = new Label(label + ":  " + (value == null ? "—" : value));
+        line.getStyleClass().add("body-copy");
+        return line;
     }
 
     private void showPlanting() {
@@ -773,6 +842,17 @@ public class ManejoCaatingueiroDesktop extends Application {
         } catch (RuntimeException error) {
             showError("Não foi possível carregar as solicitações: " + error.getMessage());
         }
+    }
+
+    private ImageView imageView(String resource, double width, double height) {
+        var stream = getClass().getResourceAsStream(resource);
+        if (stream == null) return new ImageView();
+        ImageView view = new ImageView(new Image(stream));
+        view.setFitWidth(width);
+        view.setFitHeight(height);
+        view.setPreserveRatio(true);
+        view.setSmooth(true);
+        return view;
     }
 
     private VBox metricCard(String title, String value, String detail, String colorClass) {

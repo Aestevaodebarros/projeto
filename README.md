@@ -76,3 +76,13 @@ O diagrama-fonte PlantUML está em `docs/diagrama-de-classes.puml`.
 ### Estado da sincronização
 
 As escritas locais feitas por usuários autenticados são registradas como pendências na coleção H2 `sincronizacoes`. A rota `GET /api/v1/sincronizacao/status` informa a quantidade e os itens pendentes. O status não é marcado como sincronizado automaticamente porque esta versão ainda não possui integração remota; isso evita indicar uma sincronização que não ocorreu.
+
+## Interface desktop e recursos visuais
+
+A interface desktop continua sendo JavaFX (não Jakarta Faces): Jakarta EE não é uma biblioteca de janelas desktop. O projeto usa Jakarta Validation/Servlet no backend Spring Boot e JavaFX Controls para as janelas. Foram incorporadas ao desktop a identidade visual, a logo e ilustrações do pacote SupernovaWeb em `src/main/resources/images/`.
+
+Telas desktop disponíveis: login, cadastro, visão geral, meu perfil (consulta), plantio e autonomia hídrica, reservatórios/checklist, comunidade/avisos, safras/simulações e solicitações de água (com o gate RN14 preservado).
+
+As telas usam diretamente os serviços Java/Spring do próprio `projeto-main-atualizado`, mantendo a API em `ApiController` (`/api/v1`). Os scripts TypeScript/Express do pacote SupernovaWeb não foram copiados como backend porque usam contratos `/api/v1` diferentes e Firebase; misturá-los à aplicação Java/H2 causaria incompatibilidade de endpoints e autenticação. As APIs externas de clima continuam sendo consumidas pelo `OpenMeteoClient`/`ClimaIngestionService` do projeto Java.
+
+Os SVGs do pacote visual foram preservados e também convertidos para PNG para renderização nativa no JavaFX. Origem dos recursos: pacote SupernovaWeb fornecido junto ao projeto.
