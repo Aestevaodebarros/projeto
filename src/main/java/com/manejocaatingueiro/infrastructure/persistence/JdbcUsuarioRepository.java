@@ -8,24 +8,26 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Repository
-public class InMemoryUsuarioRepository implements UsuarioRepository {
-    private final ConcurrentHashMap<Long, Usuario> usuarios = new ConcurrentHashMap<>();
-    private final AtomicLong sequencia = new AtomicLong(1);
+public class JdbcUsuarioRepository implements UsuarioRepository {
+    private static final String COLECAO = "usuarios";
+    private final JdbcDocumentStore store;
+
+    public JdbcUsuarioRepository(JdbcDocumentStore store) {
+        this.store = store;
+    }
 
     @Override
     public Optional<Usuario> buscarPorId(Long id) {
-        return Optional.ofNullable(usuarios.get(id));
+        return store.buscar(COLECAO, id.toString(), Usuario.class);
     }
 
     @Override
     public Optional<Usuario> buscarPorEmail(String email) {
-        String emailNormalizado = normalizarEmail(email);
-        return usuarios.values().stream()
-                .filter(usuario -> normalizarEmail(usuario.getEmail()).equals(emailNormalizado))
+        String normalizado = normalizarEmail(email);
+        return store.listar(COLECAO, Usuario.class).stream()
+                .filter(usuario -> normalizarEmail(usuario.getEmail()).equals(normalizado))
                 .findFirst();
     }
 
@@ -37,17 +39,14 @@ public class InMemoryUsuarioRepository implements UsuarioRepository {
     @Override
     public Usuario salvar(Usuario usuario) {
         if (usuario.getId() == null) {
-            usuario.setId(sequencia.getAndIncrement());
-        } else {
-            sequencia.accumulateAndGet(usuario.getId() + 1, Math::max);
+            usuario.setId(store.proximoId(COLECAO));
         }
-        usuarios.put(usuario.getId(), usuario);
-        return usuario;
+        return store.salvar(COLECAO, usuario.getId().toString(), usuario.getLocalidadeId(), usuario);
     }
 
     @Override
     public List<Usuario> listar() {
-        return usuarios.values().stream()
+        return store.listar(COLECAO, Usuario.class).stream()
                 .sorted(Comparator.comparing(Usuario::getId))
                 .toList();
     }

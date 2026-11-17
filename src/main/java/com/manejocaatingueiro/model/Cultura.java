@@ -1,5 +1,8 @@
 package com.manejocaatingueiro.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Cultura {
     private Integer id;
     private String nome;
@@ -7,6 +10,9 @@ public class Cultura {
     private Double limiarPadraoMm;
     private String fonte;
     private Integer cicloDias;
+    private Double etoReferenciaMmDia = 6.3;
+    private String versaoParametros = "v1";
+    private List<FaseCultura> fases = new ArrayList<>();
 
     public Cultura() {
     }
@@ -32,4 +38,10 @@ public class Cultura {
     public void setFonte(String fonte) { this.fonte = fonte; }
     public Integer getCicloDias() { return cicloDias; }
     public void setCicloDias(Integer cicloDias) { this.cicloDias = cicloDias; }
+    public Double getEtoReferenciaMmDia() { return etoReferenciaMmDia; }
+    public void setEtoReferenciaMmDia(Double etoReferenciaMmDia) { this.etoReferenciaMmDia = etoReferenciaMmDia; }
+    public String getVersaoParametros() { return versaoParametros; }
+    public void setVersaoParametros(String versaoParametros) { this.versaoParametros = versaoParametros; }
+    public List<FaseCultura> getFases() { return fases; }
+    public void setFases(List<FaseCultura> fases) { this.fases = fases; }
 }

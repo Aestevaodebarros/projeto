@@ -6,6 +6,10 @@ public class PerfilProdutivo {
     private int caprinosOvinos;
     private int aves;
     private int areaIrrigadaM2;
+    private int cavalosJumentos;
+    private int suinos;
+    private double consumoHumanoLitrosPessoaDia = 45.0;
+    private double entradasContinuasLitrosDia;
 
     public PerfilProdutivo() {
     }
@@ -28,4 +32,16 @@ public class PerfilProdutivo {
     public void setAves(int aves) { this.aves = aves; }
     public int getAreaIrrigadaM2() { return areaIrrigadaM2; }
     public void setAreaIrrigadaM2(int areaIrrigadaM2) { this.areaIrrigadaM2 = areaIrrigadaM2; }
+    public int getCavalosJumentos() { return cavalosJumentos; }
+    public void setCavalosJumentos(int cavalosJumentos) { this.cavalosJumentos = cavalosJumentos; }
+    public int getSuinos() { return suinos; }
+    public void setSuinos(int suinos) { this.suinos = suinos; }
+    public double getConsumoHumanoLitrosPessoaDia() { return consumoHumanoLitrosPessoaDia; }
+    public void setConsumoHumanoLitrosPessoaDia(double consumoHumanoLitrosPessoaDia) {
+        this.consumoHumanoLitrosPessoaDia = consumoHumanoLitrosPessoaDia;
+    }
+    public double getEntradasContinuasLitrosDia() { return entradasContinuasLitrosDia; }
+    public void setEntradasContinuasLitrosDia(double entradasContinuasLitrosDia) {
+        this.entradasContinuasLitrosDia = entradasContinuasLitrosDia;
+    }
 }

@@ -4,8 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.manejocaatingueiro.service.JwtTokenService;
+import com.manejocaatingueiro.service.UsuarioService;
+
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -18,6 +23,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ApiLayerTest {
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private JwtTokenService jwtTokenService;
+    @Autowired
+    private UsuarioService usuarioService;
 
     @Test
     void loginNaoDeveExporHashDaSenha() throws Exception {
@@ -35,6 +44,7 @@ class ApiLayerTest {
     @Test
     void errosDeValidacaoRetornamRespostaPadronizada() throws Exception {
         mockMvc.perform(put("/api/v1/reservatorios/1/nivel")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenDemo())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"nivelPercentual":101}
@@ -42,6 +52,36 @@ class ApiLayerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.mensagem").exists());
+    }
+
+    @Test
+    void escritaSemTokenRetornaUnauthorized() throws Exception {
+        mockMvc.perform(put("/api/v1/reservatorios/1/nivel")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nivelPercentual":50}
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void usuarioNaoPodeAlterarReservatorioDeOutraPropriedade() throws Exception {
+        com.manejocaatingueiro.model.Usuario visitante = new com.manejocaatingueiro.model.Usuario();
+        visitante.setNome("Visitante");
+        visitante.setEmail("visitante-" + UUID.randomUUID() + "@test.com");
+        visitante.setTelefone("75999990000");
+        visitante.setSenhaHash("123456");
+        visitante.setLocalidadeId(1);
+        visitante = usuarioService.registrar(visitante);
+        String token = jwtTokenService.criarToken(visitante);
+
+        mockMvc.perform(put("/api/v1/reservatorios/1/nivel")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nivelPercentual":50}
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -86,5 +126,11 @@ class ApiLayerTest {
         mockMvc.perform(get("/api/v1/localidades/999/diagnostico"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
+    }
+
+    private String tokenDemo() {
+        return jwtTokenService.criarToken(
+                usuarioService.autenticar("demo@manejocaatingueiro.org.br", "123456")
+        );
     }
 }

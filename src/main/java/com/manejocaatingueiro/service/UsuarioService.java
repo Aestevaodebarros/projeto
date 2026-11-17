@@ -46,14 +46,16 @@ public class UsuarioService {
         novoUsuario.setNome(usuario.getNome().trim());
         novoUsuario.setEmail(email);
         novoUsuario.setTelefone(usuario.getTelefone().trim());
-        novoUsuario.setPerfil(usuario.getPerfil() == null ? PerfilUsuario.AGRICULTOR : usuario.getPerfil());
+        novoUsuario.setPerfil(PerfilUsuario.AGRICULTOR);
         novoUsuario.setAbastecimento(usuario.getAbastecimento() == null
                 ? FonteAgua.CISTERNA
                 : usuario.getAbastecimento());
         novoUsuario.setLocalidadeId(usuario.getLocalidadeId() == null ? 1 : usuario.getLocalidadeId());
-        novoUsuario.setPerfilProdutivo(usuario.getPerfilProdutivo() == null
+        PerfilProdutivo perfilProdutivo = usuario.getPerfilProdutivo() == null
                 ? new PerfilProdutivo()
-                : usuario.getPerfilProdutivo());
+                : usuario.getPerfilProdutivo();
+        validarPerfilProdutivo(perfilProdutivo);
+        novoUsuario.setPerfilProdutivo(perfilProdutivo);
         novoUsuario.setEmailVerificado(false);
         if (!vazio(usuario.getSenhaHash())) {
             novoUsuario.setSenhaHash(passwordEncoder.encode(usuario.getSenhaHash()));
@@ -98,5 +100,18 @@ public class UsuarioService {
 
     private boolean vazio(String valor) {
         return valor == null || valor.isBlank();
+    }
+
+    private void validarPerfilProdutivo(PerfilProdutivo perfil) {
+        if (perfil.getNumeroPessoas() < 0 || perfil.getBovinos() < 0 || perfil.getCaprinosOvinos() < 0
+                || perfil.getAves() < 0 || perfil.getAreaIrrigadaM2() < 0
+                || perfil.getCavalosJumentos() < 0 || perfil.getSuinos() < 0
+                || !Double.isFinite(perfil.getConsumoHumanoLitrosPessoaDia())
+                || perfil.getConsumoHumanoLitrosPessoaDia() < 5
+                || perfil.getConsumoHumanoLitrosPessoaDia() > 100
+                || !Double.isFinite(perfil.getEntradasContinuasLitrosDia())
+                || perfil.getEntradasContinuasLitrosDia() < 0) {
+            throw new IllegalArgumentException("Perfil produtivo contém valores inválidos para consumo ou quantidade.");
+        }
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 
@@ -32,6 +33,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConflitoDeCadastroException.class)
     public ResponseEntity<ApiErrorResponse> tratarConflito(ConflitoDeCadastroException exception) {
         return resposta(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> tratarStatusHttp(ResponseStatusException exception) {
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+        return resposta(status, exception.getReason() == null ? status.getReasonPhrase() : exception.getReason());
     }
 
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})

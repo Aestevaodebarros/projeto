@@ -2,6 +2,7 @@ package com.manejocaatingueiro.repository;
 
 import com.manejocaatingueiro.model.Localidade;
 import com.manejocaatingueiro.model.Precipitacao;
+import com.manejocaatingueiro.model.ClimatologiaMensal;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,4 +12,6 @@ public interface ClimaRepository {
     Optional<Localidade> buscarLocalidade(Integer id);
     List<Precipitacao> listarPrecipitacoes(Integer localidadeId);
     Precipitacao salvarPrecipitacao(Precipitacao precipitacao);
+    List<ClimatologiaMensal> listarClimatologia(Integer localidadeId);
+    void salvarClimatologia(ClimatologiaMensal climatologia);
 }
