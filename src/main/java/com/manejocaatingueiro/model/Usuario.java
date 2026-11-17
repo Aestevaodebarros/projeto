@@ -13,6 +13,7 @@ public class Usuario {
     private Integer localidadeId;
     private PerfilProdutivo perfilProdutivo;
     private boolean emailVerificado;
+    private boolean consentimentoLocalizacao;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -41,6 +42,10 @@ public class Usuario {
     public void setPerfilProdutivo(PerfilProdutivo perfilProdutivo) { this.perfilProdutivo = perfilProdutivo; }
     public boolean isEmailVerificado() { return emailVerificado; }
     public void setEmailVerificado(boolean emailVerificado) { this.emailVerificado = emailVerificado; }
+    public boolean isConsentimentoLocalizacao() { return consentimentoLocalizacao; }
+    public void setConsentimentoLocalizacao(boolean consentimentoLocalizacao) { this.consentimentoLocalizacao = consentimentoLocalizacao; }
+    public FonteAgua getTipoAbastecimento() { return abastecimento; }
+    public void setTipoAbastecimento(FonteAgua tipoAbastecimento) { this.abastecimento = tipoAbastecimento; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

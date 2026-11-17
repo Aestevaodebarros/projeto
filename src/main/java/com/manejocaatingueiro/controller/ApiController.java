@@ -7,6 +7,9 @@ import com.manejocaatingueiro.model.PerfilUsuario;
 import com.manejocaatingueiro.model.ParametrosConsumo;
 import com.manejocaatingueiro.model.RegistroSafra;
 import com.manejocaatingueiro.model.Reservatorio;
+import com.manejocaatingueiro.model.MonitorComunitario;
+import com.manejocaatingueiro.model.Sincronizacao;
+import com.manejocaatingueiro.model.Precipitacao;
 import com.manejocaatingueiro.model.SolicitacaoAgua;
 import com.manejocaatingueiro.model.StatusSolicitacaoAgua;
 import com.manejocaatingueiro.model.Usuario;
@@ -36,6 +39,7 @@ import com.manejocaatingueiro.service.ComunidadService;
 import com.manejocaatingueiro.service.PlantioService;
 import com.manejocaatingueiro.service.ReservatorioService;
 import com.manejocaatingueiro.service.UsuarioService;
+import com.manejocaatingueiro.service.SincronizacaoService;
 import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +64,7 @@ public class ApiController {
     private final SolicitacaoAguaService solicitacaoAguaService;
     private final RegistroSafraService registroSafraService;
     private final ParametrosConsumoService parametrosConsumoService;
+    private final SincronizacaoService sincronizacaoService;
 
     public ApiController(ClimaService climaService, ClimaIngestionService climaIngestionService,
                         PlantioService plantioService,
@@ -67,7 +72,8 @@ public class ApiController {
                         UsuarioService usuarioService, JwtTokenService jwtTokenService,
                         AlertaService alertaService, SolicitacaoAguaService solicitacaoAguaService,
                         RegistroSafraService registroSafraService,
-                        ParametrosConsumoService parametrosConsumoService) {
+                        ParametrosConsumoService parametrosConsumoService,
+                        SincronizacaoService sincronizacaoService) {
         this.climaService = climaService;
         this.climaIngestionService = climaIngestionService;
         this.plantioService = plantioService;
@@ -79,6 +85,7 @@ public class ApiController {
         this.solicitacaoAguaService = solicitacaoAguaService;
         this.registroSafraService = registroSafraService;
         this.parametrosConsumoService = parametrosConsumoService;
+        this.sincronizacaoService = sincronizacaoService;
     }
 
     @GetMapping("/health")
@@ -102,7 +109,10 @@ public class ApiController {
         usuario.setAbastecimento(request.abastecimento());
         usuario.setLocalidadeId(request.localidadeId());
         usuario.setPerfilProdutivo(request.perfilProdutivo());
-        return UsuarioResponse.de(usuarioService.registrar(usuario));
+        usuario.setConsentimentoLocalizacao(Boolean.TRUE.equals(request.consentimentoLocalizacao()));
+        Usuario registrado = usuarioService.registrar(usuario);
+        sincronizacaoService.registrarPendencia(registrado.getId(), "usuario", "CRIAR", registrado.getId().toString());
+        return UsuarioResponse.de(registrado);
     }
 
     @PostMapping("/auth/login")
@@ -133,7 +143,9 @@ public class ApiController {
                                         HttpServletRequest httpRequest) {
         Usuario usuario = usuarioAutenticado(httpRequest);
         validarLocalidadeDoUsuario(id, usuario);
-        return climaService.registrarPrecipitacao(id, request.volumeMm(), request.fonte(), request.data());
+        Precipitacao precipitacao = climaService.registrarPrecipitacao(id, request.volumeMm(), request.fonte(), request.data());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "precipitacao", "CRIAR", precipitacao.getId().toString());
+        return precipitacao;
     }
 
     @PostMapping("/localidades/{id}/clima/atualizar")
@@ -161,11 +173,9 @@ public class ApiController {
                                              @Valid @RequestBody LimiarRequest request,
                                              HttpServletRequest httpRequest) {
         Usuario usuario = usuarioAutenticado(httpRequest);
-        return Map.of(
-                "culturaId", id,
-                "usuarioId", usuario.getId(),
-                "limiarMm", plantioService.calibrarLimiar(id, usuario.getId(), request.limiarMm())
-        );
+        double limiar = plantioService.calibrarLimiar(id, usuario.getId(), request.limiarMm());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "limiar_plantio", "ATUALIZAR", id.toString());
+        return Map.of("culturaId", id, "usuarioId", usuario.getId(), "limiarMm", limiar);
     }
 
     @GetMapping("/autossuficiencia/{usuarioId}")
@@ -191,23 +201,29 @@ public class ApiController {
                                           HttpServletRequest httpRequest) {
         Usuario usuario = usuarioAutenticado(httpRequest);
         reservatorio.setLocalidadeId(usuario.getLocalidadeId());
-        return reservatorioService.salvar(reservatorio, usuario.getId());
+        Reservatorio salvo = reservatorioService.salvar(reservatorio, usuario.getId());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "reservatorio", "CRIAR", salvo.getId().toString());
+        return salvo;
     }
 
     @PutMapping("/reservatorios/{id}/nivel")
     public Reservatorio atualizarNivel(@PathVariable Long id,
                                        @Valid @RequestBody NivelReservatorioRequest request,
                                        HttpServletRequest httpRequest) {
-        return reservatorioService.atualizarNivel(id, usuarioAutenticado(httpRequest).getId(),
+        Usuario usuario = usuarioAutenticado(httpRequest);
+        Reservatorio atualizado = reservatorioService.atualizarNivel(id, usuario.getId(),
                 request.nivelPercentual(), request.nivelQualitativo(), request.profundidadeLencolM());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "reservatorio", "ATUALIZAR_NIVEL", id.toString());
+        return atualizado;
     }
 
     @PostMapping("/reservatorios/{id}/checklist")
     public Map<String, Object> checklist(@PathVariable Long id,
                                          @Valid @RequestBody ChecklistRequest request,
                                          HttpServletRequest httpRequest) {
-        reservatorioService.registrarChecklist(id, usuarioAutenticado(httpRequest).getId(),
-                request.item(), request.conforme());
+        Usuario usuario = usuarioAutenticado(httpRequest);
+        reservatorioService.registrarChecklist(id, usuario.getId(), request.item(), request.conforme());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "checklist_sanitario", "CRIAR", id.toString());
         return Map.of("reservatorioId", id, "status", "registrado");
     }
 
@@ -223,12 +239,19 @@ public class ApiController {
         Usuario usuario = usuarioAutenticado(httpRequest);
         aviso.setLocalidadeId(usuario.getLocalidadeId());
         aviso.setAutor(usuario.getNome());
-        return comunidadService.publicar(aviso);
+        AvisoComunitario publicado = comunidadService.publicar(aviso);
+        sincronizacaoService.registrarPendencia(usuario.getId(), "aviso_mural", "PUBLICAR", publicado.getId() == null ? null : publicado.getId().toString());
+        return publicado;
     }
 
     @GetMapping("/localidades/{id}/monitor-reservatorios")
-    public Map<String, Object> monitorReservatorios(@PathVariable Integer id) {
+    public MonitorComunitario monitorReservatorios(@PathVariable Integer id) {
         return comunidadService.monitorLocalidade(id);
+    }
+
+    @GetMapping("/sincronizacao/status")
+    public Sincronizacao consultarSincronizacao(HttpServletRequest request) {
+        return sincronizacaoService.consultar(usuarioAutenticado(request).getId());
     }
 
     @GetMapping("/alertas/ativos")
@@ -241,16 +264,21 @@ public class ApiController {
     public AlertaClimatico emitirAlerta(@Valid @RequestBody AlertaRequest request,
                                         HttpServletRequest httpRequest) {
         Usuario usuario = usuarioAutenticado(httpRequest);
-        return alertaService.publicar(usuario.getLocalidadeId(), request.tipo(), request.severidade(),
+        AlertaClimatico alerta = alertaService.publicar(usuario.getLocalidadeId(), request.tipo(), request.severidade(),
                 request.mensagem(), request.fonte());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "alerta_climatico", "PUBLICAR", alerta.getId() == null ? null : alerta.getId().toString());
+        return alerta;
     }
 
     @PostMapping("/solicitacoes-agua")
     @ResponseStatus(HttpStatus.CREATED)
     public SolicitacaoAgua abrirSolicitacao(@Valid @RequestBody SolicitacaoAguaRequest request,
                                             HttpServletRequest httpRequest) {
-        return solicitacaoAguaService.abrir(usuarioAutenticado(httpRequest),
+        Usuario usuario = usuarioAutenticado(httpRequest);
+        SolicitacaoAgua solicitacao = solicitacaoAguaService.abrir(usuario,
                 request.reservatorioId(), request.motivo());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "solicitacao_agua", "CRIAR", solicitacao.getId().toString());
+        return solicitacao;
     }
 
     @GetMapping("/solicitacoes-agua")
@@ -268,7 +296,10 @@ public class ApiController {
     public SolicitacaoAgua atualizarSolicitacao(@PathVariable Long id,
                                                 @Valid @RequestBody StatusSolicitacaoRequest request,
                                                 HttpServletRequest httpRequest) {
-        return solicitacaoAguaService.atualizarStatus(id, usuarioAutenticado(httpRequest), request.status());
+        Usuario usuario = usuarioAutenticado(httpRequest);
+        SolicitacaoAgua atualizada = solicitacaoAguaService.atualizarStatus(id, usuario, request.status());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "solicitacao_agua", "ATUALIZAR_STATUS", id.toString());
+        return atualizada;
     }
 
     @PostMapping("/simulacoes/deficit-hidrico")
@@ -293,8 +324,11 @@ public class ApiController {
     @ResponseStatus(HttpStatus.CREATED)
     public RegistroSafra iniciarSafra(@Valid @RequestBody RegistroSafraRequest request,
                                       HttpServletRequest httpRequest) {
-        return registroSafraService.iniciar(usuarioAutenticado(httpRequest), request.culturaId(),
+        Usuario usuario = usuarioAutenticado(httpRequest);
+        RegistroSafra safra = registroSafraService.iniciar(usuario, request.culturaId(),
                 request.dataPlantio(), request.observacao());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "historico_safra", "CRIAR", safra.getId().toString());
+        return safra;
     }
 
     @GetMapping("/safras")
@@ -306,8 +340,11 @@ public class ApiController {
     public RegistroSafra registrarResultadoSafra(@PathVariable Long id,
                                                  @Valid @RequestBody ResultadoSafraRequest request,
                                                  HttpServletRequest httpRequest) {
-        return registroSafraService.registrarResultado(usuarioAutenticado(httpRequest).getId(),
+        Usuario usuario = usuarioAutenticado(httpRequest);
+        RegistroSafra safra = registroSafraService.registrarResultado(usuario.getId(),
                 id, request.resultado(), request.observacao());
+        sincronizacaoService.registrarPendencia(usuario.getId(), "historico_safra", "ATUALIZAR_RESULTADO", id.toString());
+        return safra;
     }
 
     @PostMapping("/safras/{id}/avaliar-risco")

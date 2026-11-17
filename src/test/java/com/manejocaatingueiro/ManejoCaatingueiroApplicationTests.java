@@ -51,7 +51,12 @@ class ManejoCaatingueiroApplicationTests {
         usuario.setPerfilProdutivo(new PerfilProdutivo(5, 2, 2, 10, 300));
 
         var resultado = plantioService.avaliarAptidao(1, usuario);
-        assertThat(resultado).containsKey("autonomiaDias");
+        assertThat(resultado).containsKeys("autonomiaDias", "calculoAutossuficiencia");
+        assertThat(resultado.get("calculoAutossuficiencia"))
+                .isInstanceOf(com.manejocaatingueiro.model.CalculoAutossuficiencia.class);
         assertThat(resultado.get("culturas")).isNotNull();
+        java.util.Map<?, ?> cultura = (java.util.Map<?, ?>) ((java.util.List<?>) resultado.get("culturas")).get(0);
+        assertThat(java.util.List.of("resultadoViabilidade", "sugestaoPlantio", "serieHistoricaClimatica"))
+                .allMatch(cultura::containsKey);
     }
 }

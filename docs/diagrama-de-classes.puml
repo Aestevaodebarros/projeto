@@ -1,0 +1,295 @@
+@startuml ManejoCaatingueiro
+skinparam classAttributeIconSize 0
+hide methods
+left to right direction
+
+package "GestaoUsuario" {
+  class Usuario {
+    +Long id
+    +String nome
+    +String email
+    +String telefone
+    +String senhaHash
+    +PerfilUsuario perfil
+    +FonteAgua abastecimento
+    +Integer localidadeId
+    +boolean consentimentoLocalizacao
+  }
+  class PerfilProdutivo {
+    +int numeroPessoas
+    +int bovinos
+    +int caprinosOvinos
+    +int aves
+    +int cavalosJumentos
+    +int suinos
+    +int areaIrrigadaM2
+    +double consumoHumanoLitrosPessoaDia
+    +double entradasContinuasLitrosDia
+  }
+  class Localidade {
+    +Integer id
+    +String nome
+    +String tipo
+    +Integer paiId
+    +String codigoIbge
+    +String uf
+    +Double latitude
+    +Double longitude
+  }
+  class Sincronizacao {
+    +Long idSincronizacao
+    +Long usuarioId
+    +String status
+    +Instant dataUltimaSincronizacao
+    +Instant atualizadoEm
+    +int quantidadePendencias
+  }
+  class PendenciaSincronizacao {
+    +String id
+    +String entidade
+    +String operacao
+    +String referenciaId
+    +String status
+    +Instant criadaEm
+  }
+}
+
+package "GestaoAgua" {
+  class Reservatorio {
+    +Long id
+    +String nome
+    +String tipo
+    +Integer localidadeId
+    +Double capacidadeLitros
+    +Double nivelPercentual
+    +String nivelQualitativo
+    +Double profundidadeLencolM
+    +Double diametroM
+    +Double profundidadeTotalM
+    +Long usuarioResponsavelId
+    +boolean consentimentoAgregado
+    +Instant ultimaSincronizacao
+  }
+  class RegistroNivel {
+    +Long id
+    +LocalDate data
+    +Double nivelPercentual
+    +String nivelQualitativo
+    +Double profundidadeLencolM
+    +Instant registradoEm
+  }
+  class ChecklistSanitario {
+    +Long id
+    +String item
+    +boolean conforme
+    +String resultado
+    +String observacoes
+    +Instant dataAvaliacao
+  }
+  class CalculoAutossuficiencia {
+    +Long idCalculo
+    +Long usuarioId
+    +Integer localidadeId
+    +double reservaUtilLitros
+    +double consumoDiarioLitros
+    +double entradasContinuasLitrosDia
+    +double consumoLiquidoDiarioLitros
+    +Double autonomiaDias
+    +String statusHidrico
+    +String fonteParametrosConsumo
+    +String versaoParametrosConsumo
+    +Instant dataCalculo
+  }
+  class SolicitacaoAgua {
+    +Long id
+    +Instant dataSolicitacao
+    +StatusSolicitacaoAgua status
+  }
+  class SimulacaoDeficitHidrico {
+    +Long idSimulacao
+    +Long usuarioId
+    +Double variacaoConsumo
+    +Double variacaoOferta
+    +Double autonomiaSimulada
+    +String resultado
+    +Instant dataSimulacao
+  }
+}
+
+package "MonitoramentoClimatico" {
+  class Precipitacao {
+    +Long id
+    +Integer localidadeId
+    +Double volumeMm
+    +String fonte
+    +Instant data
+  }
+  class ClimatologiaMensal {
+    +Integer mes
+    +Double precipitacaoMediaMm
+    +Integer anosBase
+  }
+  class SerieHistoricaClimatica {
+    +Integer localidadeId
+    +Double mediaHistorica
+    +Double chuvaAcumulada
+    +Double chuvaEsperada
+    +Integer anosBase
+    +boolean dadosSuficientes
+    +String fonte
+    +Instant dataAtualizacao
+  }
+  class AlertaClimatico {
+    +Long id
+    +Integer localidadeId
+    +String tipo
+    +String severidade
+    +String mensagem
+    +String fonte
+    +Instant criadoEm
+    +Instant validoAte
+    +boolean ativo
+  }
+  class MonitorComunitario {
+    +Integer idMonitor
+    +Integer localidadeId
+    +Integer quantidadeReservatorios
+    +String participantes
+    +long reservatoriosCriticos
+    +long reservatoriosEmAtencao
+    +long riscosSanitarios
+    +int totalAvisos
+    +boolean suficiente
+    +boolean dadosInsuficientes
+    +Instant ultimaSincronizacao
+  }
+  class AvisoMural {
+    +Long id
+    +Integer localidadeId
+    +String titulo
+    +String mensagem
+    +String autor
+    +Instant criadoEm
+    +Instant dataExpiracao
+  }
+}
+
+package "PlanejamentoAgricola" {
+  class Cultura {
+    +Integer id
+    +String nome
+    +Double demandaTotalMm
+    +Double limiarPadraoMm
+    +String fonte
+    +Integer cicloDias
+    +Double etoReferenciaMmDia
+    +String versaoParametros
+  }
+  class FaseCultura {
+    +String nome
+    +Double kc
+    +Integer duracaoDias
+  }
+  class ParametroAgronomico {
+    +Integer idParametro
+    +Integer culturaId
+    +String fase
+    +Double kc
+    +Double eto
+    +Integer duracaoFase
+    +Double necessidadeHidricaMm
+    +String fonte
+    +String versao
+  }
+  class ResultadoViabilidade {
+    +Long idResultado
+    +Integer culturaId
+    +String culturaNome
+    +Double ofertaHidricaMm
+    +Double demandaCulturaMm
+    +Double indiceViabilidade
+    +String classificacao
+    +boolean dadosInsuficientes
+    +Double chuvaAcumuladaMm
+    +Double chuvaEsperadaMm
+    +Double aguaReservadaMm
+    +LocalDate dataPlantio
+    +String fonteClimatologica
+    +String fonteAgronomica
+    +Instant dataCalculo
+  }
+  class SugestaoPlantio {
+    +Long idSugestao
+    +Long usuarioId
+    +Integer culturaId
+    +Long resultadoViabilidadeId
+    +String recomendacao
+    +String grauConfianca
+    +String justificativa
+    +String fonte
+    +Instant dataGeracao
+  }
+  class HistoricoSafra {
+    +Long id
+    +Long usuarioId
+    +Integer localidadeId
+    +Integer culturaId
+    +String culturaNome
+    +LocalDate dataPlantio
+    +LocalDate dataColheita
+    +StatusSafra resultado
+    +String observacao
+    +Instant criadoEm
+    +Instant atualizadoEm
+  }
+}
+
+Usuario "1" -- "1" PerfilProdutivo : possui
+Usuario "*" -- "1" Localidade : pertence
+Usuario "1" -- "0..*" Reservatorio : responsavel
+Usuario "1" -- "1" Sincronizacao : possui
+Sincronizacao "1" *-- "0..*" PendenciaSincronizacao : fila
+Reservatorio "1" *-- "0..*" RegistroNivel : historico
+Reservatorio "1" *-- "0..*" ChecklistSanitario : checklist
+Reservatorio "0..*" --> "1" CalculoAutossuficiencia : fornece reserva
+PerfilProdutivo "1" --> "0..*" CalculoAutossuficiencia : fornece consumo
+CalculoAutossuficiencia "1" --> "0..*" ResultadoViabilidade : compoe avaliacao
+Usuario "1" --> "0..*" Precipitacao : registra
+Localidade "1" --> "0..*" Precipitacao : registra
+Localidade "1" --> "0..*" ClimatologiaMensal : possui
+Localidade "1" --> "0..*" SerieHistoricaClimatica : consolida
+Localidade "1" --> "0..*" AlertaClimatico : recebe
+Localidade "1" --> "0..1" MonitorComunitario : agrega
+Localidade "1" --> "0..*" AvisoMural : possui
+Cultura "1" *-- "1..*" FaseCultura : fases
+Cultura "1" --> "0..*" ParametroAgronomico : utiliza
+Cultura "1" --> "0..*" ResultadoViabilidade : avaliada
+ParametroAgronomico "1..*" --> "1" ResultadoViabilidade : fornece demanda
+SerieHistoricaClimatica "1" --> "0..*" ResultadoViabilidade : fornece oferta
+ResultadoViabilidade "1" --> "1" SugestaoPlantio : fundamenta
+Usuario "1" --> "0..*" HistoricoSafra : registra
+Cultura "1" --> "0..*" HistoricoSafra : identifica cultura
+Reservatorio "1" --> "0..*" SolicitacaoAgua : origina
+CalculoAutossuficiencia "1" --> "0..*" SimulacaoDeficitHidrico : base
+Usuario "1" --> "0..*" SimulacaoDeficitHidrico : realiza
+
+note right of Sincronizacao
+  A classe representa pendências locais persistidas no H2.
+  Não existe despacho remoto automático nesta versão.
+end note
+note bottom of MonitorComunitario
+  Dados agregados apenas com pelo menos cinco reservatórios
+  participantes e consentimento explícito para agregação.
+end note
+note bottom of RegistroNivel
+  A implementação usa RegistroNivelReservatorio como
+  subtipo compatível com o histórico já existente.
+end note
+note bottom of AvisoMural
+  A implementação usa AvisoComunitario como subtipo
+  compatível com a API existente. Avisos expiram em 30 dias.
+end note
+note bottom of HistoricoSafra
+  A API utiliza RegistroSafra como subtipo compatível.
+end note
+@enduml

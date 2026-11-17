@@ -14,7 +14,8 @@ public record UsuarioResponse(
         FonteAgua abastecimento,
         Integer localidadeId,
         PerfilProdutivo perfilProdutivo,
-        boolean emailVerificado
+        boolean emailVerificado,
+        boolean consentimentoLocalizacao
 ) {
     public static UsuarioResponse de(Usuario usuario) {
         return new UsuarioResponse(
@@ -26,7 +27,8 @@ public record UsuarioResponse(
                 usuario.getAbastecimento(),
                 usuario.getLocalidadeId(),
                 usuario.getPerfilProdutivo(),
-                usuario.isEmailVerificado()
+                usuario.isEmailVerificado(),
+                usuario.isConsentimentoLocalizacao()
         );
     }
 }

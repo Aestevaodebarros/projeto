@@ -6,6 +6,7 @@ import com.manejocaatingueiro.model.Cultura;
 import com.manejocaatingueiro.model.Localidade;
 import com.manejocaatingueiro.model.Precipitacao;
 import com.manejocaatingueiro.model.Reservatorio;
+import com.manejocaatingueiro.model.MonitorComunitario;
 import com.manejocaatingueiro.model.StatusSafra;
 import com.manejocaatingueiro.model.Usuario;
 import com.manejocaatingueiro.service.ClimaService;
@@ -14,6 +15,7 @@ import com.manejocaatingueiro.service.PlantioService;
 import com.manejocaatingueiro.service.ReservatorioService;
 import com.manejocaatingueiro.service.UsuarioService;
 import com.manejocaatingueiro.service.RegistroSafraService;
+import com.manejocaatingueiro.service.SincronizacaoService;
 import com.manejocaatingueiro.service.SolicitacaoAguaService;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -62,6 +64,7 @@ public class ManejoCaatingueiroDesktop extends Application {
     private UsuarioService usuarioService;
     private RegistroSafraService registroSafraService;
     private SolicitacaoAguaService solicitacaoAguaService;
+    private SincronizacaoService sincronizacaoService;
     private BorderPane root;
     private VBox content;
     private Label feedback;
@@ -87,6 +90,7 @@ public class ManejoCaatingueiroDesktop extends Application {
         usuarioService = springContext.getBean(UsuarioService.class);
         registroSafraService = springContext.getBean(RegistroSafraService.class);
         solicitacaoAguaService = springContext.getBean(SolicitacaoAguaService.class);
+        sincronizacaoService = springContext.getBean(SincronizacaoService.class);
 
         root = new BorderPane();
         root.getStyleClass().add("app-root");
@@ -183,6 +187,7 @@ public class ManejoCaatingueiroDesktop extends Application {
         TextField irrigatedArea = numberField("Área irrigada (m²)", "0");
         TextField horses = numberField("Cavalos/jumentos", "0");
         TextField pigs = numberField("Suínos", "0");
+        CheckBox consentLocation = new CheckBox("Autorizo o uso da minha localização para contextualizar os dados climáticos.");
         Label status = new Label();
         status.getStyleClass().add("error-text");
         Button save = new Button("Criar conta");
@@ -196,12 +201,14 @@ public class ManejoCaatingueiroDesktop extends Application {
                 novo.setSenhaHash(password.getText());
                 novo.setAbastecimento(waterSource.getValue());
                 novo.setLocalidadeId(locality.getValue().getId());
+                novo.setConsentimentoLocalizacao(consentLocation.isSelected());
                 novo.setPerfilProdutivo(new com.manejocaatingueiro.model.PerfilProdutivo(
                         parseInteger(people), parseInteger(cattle), parseInteger(goats),
                         parseInteger(birds), parseInteger(irrigatedArea)));
                 novo.getPerfilProdutivo().setCavalosJumentos(parseInteger(horses));
                 novo.getPerfilProdutivo().setSuinos(parseInteger(pigs));
                 usuarioAtual = usuarioService.registrar(novo);
+                sincronizacaoService.registrarPendencia(usuarioAtual.getId(), "usuario", "CRIAR", usuarioAtual.getId().toString());
                 localidadeId = usuarioAtual.getLocalidadeId();
                 abrirPainel();
             } catch (RuntimeException error) {
@@ -211,7 +218,7 @@ public class ManejoCaatingueiroDesktop extends Application {
         Button back = new Button("Voltar ao login");
         back.setOnAction(event -> showLogin());
         form.getChildren().addAll(title, name, email, phone, password, locality, waterSource,
-                people, cattle, goats, birds, horses, pigs, irrigatedArea, save, back, status);
+                people, cattle, goats, birds, horses, pigs, irrigatedArea, consentLocation, save, back, status);
         root.setLeft(null);
         root.setTop(null);
         root.setBottom(null);
@@ -373,7 +380,9 @@ public class ManejoCaatingueiroDesktop extends Application {
                                     ? "Indeterminada" : value(water.get("autonomiaDias")) + " dias",
                             "Status: " + value(water.get("statusAutonomia")), "olive"),
                     metricCard("SEUS RESERVATÓRIOS", String.valueOf(reservatorioService.listarPorUsuario(user.getId()).size()),
-                            "Dados privados da propriedade", "ochre")
+                            "Dados privados da propriedade", "ochre"),
+                    metricCard("PENDÊNCIAS LOCAIS", String.valueOf(sincronizacaoService.consultar(user.getId()).getQuantidadePendencias()),
+                            "Aguardando integração remota", "blue")
             );
             metrics.getChildren().forEach(node -> HBox.setHgrow(node, Priority.ALWAYS));
 
@@ -530,6 +539,7 @@ public class ManejoCaatingueiroDesktop extends Application {
                     try {
                         reservatorioService.atualizarNivel(reservoir.getId(), usuarioAtual.getId(),
                                 Double.parseDouble(newLevel.getText().replace(',', '.')));
+                        sincronizacaoService.registrarPendencia(usuarioAtual.getId(), "reservatorio", "ATUALIZAR_NIVEL", reservoir.getId().toString());
                         showFeedback("Nível atualizado no histórico do reservatório.");
                         showReservoirs();
                     } catch (RuntimeException error) {
@@ -541,6 +551,7 @@ public class ManejoCaatingueiroDesktop extends Application {
                     try {
                         reservatorioService.registrarChecklist(reservoir.getId(), usuarioAtual.getId(),
                                 checklistItem.getText(), true);
+                        sincronizacaoService.registrarPendencia(usuarioAtual.getId(), "checklist_sanitario", "CRIAR", reservoir.getId().toString());
                         showFeedback("Checklist sanitário registrado.");
                         showReservoirs();
                     } catch (RuntimeException error) {
@@ -564,10 +575,10 @@ public class ManejoCaatingueiroDesktop extends Application {
             content.setPadding(new Insets(28));
             Label title = new Label("Comunidade");
             title.getStyleClass().add("page-title");
-            Map<String, Object> monitor = comunidadService.monitorLocalidade(localidadeId);
+            MonitorComunitario monitor = comunidadService.monitorLocalidade(localidadeId);
             HBox summary = new HBox(16,
-                    metricCard("AVISOS ATIVOS", String.valueOf(monitor.get("totalAvisos")), "Mural local", "ochre"),
-                    metricCard("PARTICIPANTES", String.valueOf(monitor.get("participantes")), "Resumo agregado", "olive")
+                    metricCard("AVISOS ATIVOS", String.valueOf(monitor.getTotalAvisos()), "Mural local", "ochre"),
+                    metricCard("PARTICIPANTES", String.valueOf(monitor.getParticipantes()), "Resumo agregado", "olive")
             );
             summary.getChildren().forEach(node -> HBox.setHgrow(node, Priority.ALWAYS));
             content.getChildren().addAll(title, summary);
@@ -592,7 +603,9 @@ public class ManejoCaatingueiroDesktop extends Application {
                 try {
                     AvisoComunitario notice = new AvisoComunitario(null, localidadeId,
                             subject.getText().trim(), message.getText().trim(), usuarioAtual.getNome());
-                    comunidadService.publicar(notice);
+                    AvisoComunitario publicado = comunidadService.publicar(notice);
+                    sincronizacaoService.registrarPendencia(usuarioAtual.getId(), "aviso_mural", "PUBLICAR",
+                            publicado.getId() == null ? null : publicado.getId().toString());
                     showFeedback("Aviso publicado.");
                     showCommunity();
                 } catch (RuntimeException error) {
@@ -629,9 +642,11 @@ public class ManejoCaatingueiroDesktop extends Application {
         save.getStyleClass().add("button-primary");
         save.setOnAction(event -> {
             try {
-                climaService.registrarPrecipitacao(localidadeId,
+                Precipitacao registrada = climaService.registrarPrecipitacao(localidadeId,
                         Double.parseDouble(volume.getText().replace(',', '.')),
                         source.getValue(), date.getValue());
+                sincronizacaoService.registrarPendencia(requireCurrentUser().getId(), "precipitacao", "CRIAR",
+                        registrada.getId() == null ? null : registrada.getId().toString());
                 showFeedback("Registro de chuva salvo localmente.");
                 showPlanting();
             } catch (RuntimeException error) {
@@ -687,8 +702,9 @@ public class ManejoCaatingueiroDesktop extends Application {
             Button create = new Button("Salvar plantio");
             create.setOnAction(event -> {
                 try {
-                    registroSafraService.iniciar(user, crop.getValue().getId(),
+                    var safra = registroSafraService.iniciar(user, crop.getValue().getId(),
                             plantingDate.getValue(), note.getText());
+                    sincronizacaoService.registrarPendencia(user.getId(), "historico_safra", "CRIAR", safra.getId().toString());
                     showFeedback("Plantio registrado no histórico.");
                     showHarvests();
                 } catch (RuntimeException error) {
@@ -721,6 +737,7 @@ public class ManejoCaatingueiroDesktop extends Application {
                     try {
                         registroSafraService.registrarResultado(user.getId(), harvest.getId(),
                                 outcome.getValue(), null);
+                        sincronizacaoService.registrarPendencia(user.getId(), "historico_safra", "ATUALIZAR_RESULTADO", harvest.getId().toString());
                         showFeedback("Resultado da safra registrado.");
                         showHarvests();
                     } catch (RuntimeException error) {

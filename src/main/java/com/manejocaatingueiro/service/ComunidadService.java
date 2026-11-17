@@ -1,6 +1,7 @@
 package com.manejocaatingueiro.service;
 
 import com.manejocaatingueiro.model.AvisoComunitario;
+import com.manejocaatingueiro.model.MonitorComunitario;
 import com.manejocaatingueiro.model.Reservatorio;
 import com.manejocaatingueiro.repository.AvisoComunitarioRepository;
 import com.manejocaatingueiro.repository.ReservatorioRepository;
@@ -8,12 +9,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ComunidadService {
+    private static final int MINIMO_PARTICIPANTES_AGREGADO = 5;
     private final AvisoComunitarioRepository avisoRepository;
     private final ReservatorioRepository reservatorioRepository;
 
@@ -40,40 +41,47 @@ public class ComunidadService {
         aviso.setTitulo(aviso.getTitulo().trim());
         aviso.setMensagem(aviso.getMensagem().trim());
         aviso.setCriadoEm(Instant.now());
+        aviso.setDataExpiracao(aviso.getCriadoEm().plus(30, ChronoUnit.DAYS));
         return avisoRepository.salvar(aviso);
     }
 
-    public Map<String, Object> monitorLocalidade(Integer localidadeId) {
+    public MonitorComunitario monitorLocalidade(Integer localidadeId) {
         List<AvisoComunitario> avisos = listar(localidadeId);
         List<Reservatorio> participantes = reservatorioRepository.listarPorLocalidade(localidadeId).stream()
                 .filter(Reservatorio::isConsentimentoAgregado)
                 .toList();
-        Map<String, Object> retorno = new HashMap<>();
-        retorno.put("localidadeId", localidadeId);
-        retorno.put("totalAvisos", avisos.size());
-        retorno.put("atualizadoEm", Instant.now().toString());
-        retorno.put("dadosInsuficientes", participantes.size() < 5);
-        retorno.put("participantes", participantes.size() < 5 ? "menos de 5" : participantes.size());
-        retorno.put("suficiente", participantes.size() >= 5);
-        if (participantes.size() >= 5) {
-            retorno.put("reservatoriosCriticos", participantes.stream()
+
+        MonitorComunitario monitor = new MonitorComunitario();
+        monitor.setIdMonitor(localidadeId);
+        monitor.setLocalidadeId(localidadeId);
+        monitor.setTotalAvisos(avisos.size());
+        monitor.setAtualizadoEm(Instant.now());
+        boolean suficiente = participantes.size() >= MINIMO_PARTICIPANTES_AGREGADO;
+        monitor.setSuficiente(suficiente);
+        monitor.setDadosInsuficientes(!suficiente);
+        monitor.setParticipantes(suficiente ? Integer.toString(participantes.size()) : "menos de 5");
+
+        // RN15: quantidades e condições sanitárias individuais não são expostas antes do mínimo agregado.
+        if (suficiente) {
+            monitor.setQuantidadeReservatorios(participantes.size());
+            monitor.setReservatoriosCriticos(participantes.stream()
                     .filter(item -> item.getNivelPercentual() != null && item.getNivelPercentual() < 25)
                     .count());
-            retorno.put("reservatoriosEmAtencao", participantes.stream()
+            monitor.setReservatoriosEmAtencao(participantes.stream()
                     .filter(item -> item.getNivelPercentual() != null
                             && item.getNivelPercentual() >= 25 && item.getNivelPercentual() < 50)
                     .count());
-            retorno.put("riscoSanitario", participantes.stream()
+            monitor.setRiscosSanitarios(participantes.stream()
                     .filter(item -> item.getChecklists() != null)
                     .filter(item -> item.getChecklists().stream().anyMatch(check -> !check.isConforme()))
                     .count());
-            retorno.put("ultimaSincronizacao", participantes.stream()
+            monitor.setUltimaSincronizacao(participantes.stream()
                     .map(Reservatorio::getUltimaSincronizacao)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .max(Instant::compareTo)
                     .orElse(null));
         }
-        return retorno;
+        return monitor;
     }
 
     private boolean vazio(String valor) {

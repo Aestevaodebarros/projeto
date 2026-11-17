@@ -51,26 +51,18 @@ public class Reservatorio {
     public void setConsentimentoAgregado(boolean consentimentoAgregado) { this.consentimentoAgregado = consentimentoAgregado; }
     public Instant getUltimaSincronizacao() { return ultimaSincronizacao; }
     public void setUltimaSincronizacao(Instant ultimaSincronizacao) { this.ultimaSincronizacao = ultimaSincronizacao; }
-    public List<ChecklistSanitario> getChecklists() { return checklists; }
-    public void setChecklists(List<ChecklistSanitario> checklists) { this.checklists = checklists; }
-    public List<RegistroNivelReservatorio> getHistoricoNiveis() { return historicoNiveis; }
-    public void setHistoricoNiveis(List<RegistroNivelReservatorio> historicoNiveis) { this.historicoNiveis = historicoNiveis; }
-
-    public static class ChecklistSanitario {
-        private Long id;
-        private String item;
-        private boolean conforme;
-        private Instant data;
-
-        public ChecklistSanitario() { this.data = Instant.now(); }
-
-        public Long getId() { return id; }
-        public void setId(Long id) { this.id = id; }
-        public String getItem() { return item; }
-        public void setItem(String item) { this.item = item; }
-        public boolean isConforme() { return conforme; }
-        public void setConforme(boolean conforme) { this.conforme = conforme; }
-        public Instant getData() { return data; }
-        public void setData(Instant data) { this.data = data; }
+    public List<ChecklistSanitario> getChecklists() {
+        if (checklists == null) checklists = new ArrayList<>();
+        return checklists;
+    }
+    public void setChecklists(List<ChecklistSanitario> checklists) {
+        this.checklists = checklists == null ? new ArrayList<>() : checklists;
+    }
+    public List<RegistroNivelReservatorio> getHistoricoNiveis() {
+        if (historicoNiveis == null) historicoNiveis = new ArrayList<>();
+        return historicoNiveis;
+    }
+    public void setHistoricoNiveis(List<RegistroNivelReservatorio> historicoNiveis) {
+        this.historicoNiveis = historicoNiveis == null ? new ArrayList<>() : historicoNiveis;
     }
 }

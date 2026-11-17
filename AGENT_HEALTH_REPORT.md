@@ -1,86 +1,38 @@
-# Relatório do Agente de Acompanhamento de Código
+# Relatório de revisão do ZIP Manejo Caatingueiro
 
-**Data da Auditoria:** 2026-10-23 22:10:12  
-**Pontuação de Saúde:** 100% (55/55 checagens aprovadas)  
-**Status Geral:** 🟢 APROVADO  
+**Escopo desta revisão:** projeto Java 17 / Spring Boot 3 / JavaFX incluído neste arquivo compactado, confrontado com o diagrama UML enviado e com a Especificação de Requisitos v4.
 
----
+> O relatório de auditoria anterior, que mencionava Firebase, TypeScript e diretórios `public/`, não correspondia ao código Java atualmente presente neste ZIP. Ele foi substituído para evitar conclusões incorretas sobre a implementação.
 
-## Sumário de Indicadores
+## Alterações realizadas
 
-| Categoria | Total Checagens | Aprovadas | Alertas | Falhas |
-| :--- | :---: | :---: | :---: | :---: |
-| **Frontend** | 20 | 20 | 0 | 0 |
-| **Backend** | 21 | 21 | 0 | 0 |
-| **Segurança** | 5 | 5 | 0 | 0 |
-| **Banco de Dados** | 8 | 8 | 0 | 0 |
+- Criadas classes de domínio para `CalculoAutossuficiencia`, `ResultadoViabilidade`, `SugestaoPlantio`, `ParametroAgronomico` e `SerieHistoricaClimatica`.
+- Criadas classes `MonitorComunitario`, `ChecklistSanitario`, `Sincronizacao` e `PendenciaSincronizacao`.
+- Criados nomes de domínio do diagrama `RegistroNivel`, `AvisoMural` e `HistoricoSafra`, preservando classes de compatibilidade usadas pela API (`RegistroNivelReservatorio`, `AvisoComunitario` e `RegistroSafra`).
+- Criada classe `SimulacaoDeficitHidrico` e integrada ao retorno da simulação.
+- O cálculo de autonomia e viabilidade passou a expor os objetos de domínio tipados, mantendo as chaves anteriores do JSON para reduzir quebra de compatibilidade.
+- O monitor comunitário aplica o mínimo de cinco reservatórios com consentimento antes de expor contagens agregadas.
+- A validade de avisos do mural passou a ser explicitada em até 30 dias corridos.
+- Adicionado consentimento opcional de localização ao cadastro por API e JavaFX.
+- Adicionada fila local persistente de operações pendentes de replicação externa e rota `GET /api/v1/sincronizacao/status`.
+- Atualizadas as telas JavaFX para consumir o modelo tipado do monitor e exibir pendências locais.
+- Adicionado diagrama-fonte PlantUML em `docs/diagrama-de-classes.puml`.
 
----
+## Limitações conhecidas
 
-## Detalhamento das Checagens
+- A fila de sincronização é persistida localmente no H2, mas não há dispatcher/worker nem integração remota para transmitir e confirmar as pendências. O sistema não afirma sincronização entre dispositivos.
+- Os requisitos RF14–RF16 e o monitor continuam sujeitos ao gate de validação em campo descrito na especificação.
+- Parâmetros de Kc, ETo e duração de fases ainda precisam de validação agronômica local antes de uso operacional.
 
-| Status | Categoria | Verificação | Detalhes |
-| :---: | :--- | :--- | :--- |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/index.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/vercel.json | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/css/global/elements.css | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/css/global.css | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/css/painel.css | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/css/comunidade.css | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/images/favicon.ico | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/images/logo.png | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/js/menu.js | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/js/clima-dinamico.js | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/js/acessibilidade-voz.js | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/assets/js/app.js | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/login.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/painel.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/perfil.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/admin.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/assistente-ia.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/plantio.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/reservatorios.html | Presente e acessível |
-| ✅ Passou | **Frontend** | Arquivo essencial: public/pages/comunidade.html | Presente e acessível |
-| ✅ Passou | **Backend** | Componente backend/domínio: server.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/infrastructure/database/FirebaseClient.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/infrastructure/exception/BusinessException.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/infrastructure/exception/ErrorResponseDTO.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/infrastructure/exception/ApiExceptionHandler.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/infrastructure/security/JwtService.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/infrastructure/security/AuthMiddleware.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/usuario/controller/UsuarioController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/usuario/service/UsuarioService.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/usuario/repository/UsuarioRepository.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/clima/controller/ClimaController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/clima/service/ClimaService.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/clima/service/RadarMeteorologicoService.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/pluviometro/controller/PluviometroController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/plantio/controller/PlantioController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/reservatorio/controller/ReservatorioController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/comunidade/controller/ComunidadeController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/ia/controller/IaController.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: src/domain/ia/service/IaService.ts | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: firebase/firestore.rules | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Backend** | Componente backend/domínio: firebase/estrutura-colecoes.json | Configurado corretamente na arquitetura Firebase + FindPet |
-| ✅ Passou | **Segurança** | Modal de Confirmação de Logout no HTML | Elemento #logout-confirm-modal presente no HTML para evitar logouts acidentais |
-| ✅ Passou | **Segurança** | Lógica defensiva de Logout no JavaScript | Evento de clique exibe modal antes de encerrar sessão |
-| ✅ Passou | **Segurança** | Sanitização de XSS em listas e tabelas dinâmicas | Função escapeHtml aplicada em títulos, murais, alertas e tabela administrativa |
-| ✅ Passou | **Segurança** | Headers HTTP de Proteção no Backend | X-Content-Type-Options, X-XSS-Protection, Referrer-Policy e Permissions-Policy ativos |
-| ✅ Passou | **Segurança** | Rate Limiting / Proteção contra Força Bruta | Limite de tentativas ativado nos endpoints de autenticação |
-| ✅ Passou | **Limpeza UI** | Remoção de links desnecessários do rodapé | Links Guia de Deploy e Swagger removidos com sucesso |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: usuarios | Coleção usuarios declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: rocas | Coleção rocas declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: localidades | Coleção localidades declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: culturas | Coleção culturas declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: limiares_plantio | Coleção limiares_plantio declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: precipitacoes | Coleção precipitacoes declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: reservatorios | Coleção reservatorios declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
-| ✅ Passou | **Banco de Dados** | Coleção Cloud Firestore: comunidade_avisos | Coleção comunidade_avisos declarada em FirebaseClient.ts, firestore.rules e estrutura-colecoes.json |
+## Verificações executadas
 
----
+- Compilação com `javac` concluída para todas as classes do pacote `model`.
+- Compilação com stubs mínimos de anotação Spring concluída para `PlantioService`, `ReservatorioService`, `ComunidadService`, `ParametrosConsumoService` e `SincronizacaoService`, além das interfaces de repositório usadas por esses serviços.
+- `mvn test` não foi executado porque o ambiente desta sessão não possui Maven instalado e o ZIP não contém Maven Wrapper.
 
-## Recomendações do Agente
+## Próximos passos recomendados
 
-1. **Deploy Automático:** Execute `npm run agent` sempre antes de realizar commits no repositório.
-2. **Segurança Contínua:** Mantenha os tokens JWT com expiração máxima de 8 horas e as regras `firebase/firestore.rules` atualizadas no Cloud Firestore.
-3. **Sincronização Offline:** Garanta que a fila local `mc_offline_queue` continue sincronizando em segundo plano quando a conectividade com o Render/Firebase for restabelecida.
+1. Executar `mvn test` em ambiente com Maven e Java 17+.
+2. Validar a serialização/deserialização dos documentos H2 que já existam, especialmente `Reservatorio` (checklists e histórico de níveis) e `RegistroSafra`.
+3. Implementar e validar a integração remota antes de processar a fila local como sincronizada.
+4. Validar Kc, ETo, consumo e ciclo das culturas com técnico agrícola ou extensionista, conforme RNF11 e plano de ação da revisão 4.

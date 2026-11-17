@@ -57,6 +57,7 @@ public class UsuarioService {
         validarPerfilProdutivo(perfilProdutivo);
         novoUsuario.setPerfilProdutivo(perfilProdutivo);
         novoUsuario.setEmailVerificado(false);
+        novoUsuario.setConsentimentoLocalizacao(usuario.isConsentimentoLocalizacao());
         if (!vazio(usuario.getSenhaHash())) {
             novoUsuario.setSenhaHash(passwordEncoder.encode(usuario.getSenhaHash()));
         }

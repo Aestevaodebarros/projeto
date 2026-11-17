@@ -2,6 +2,7 @@ package com.manejocaatingueiro.service;
 
 import com.manejocaatingueiro.model.Reservatorio;
 import com.manejocaatingueiro.model.RegistroNivelReservatorio;
+import com.manejocaatingueiro.model.ChecklistSanitario;
 import com.manejocaatingueiro.domain.exception.RecursoNaoEncontradoException;
 import com.manejocaatingueiro.repository.ReservatorioRepository;
 import org.springframework.stereotype.Service;
@@ -107,11 +108,11 @@ public class ReservatorioService {
             throw new IllegalArgumentException("Informe o item do checklist sanitário.");
         }
         Reservatorio reservatorio = buscarDoResponsavel(reservatorioId, usuarioId);
-        Reservatorio.ChecklistSanitario checklist = new Reservatorio.ChecklistSanitario();
+        ChecklistSanitario checklist = new ChecklistSanitario();
         checklist.setId(System.currentTimeMillis());
         checklist.setItem(item.trim());
         checklist.setConforme(conforme);
-        checklist.setData(Instant.now());
+        checklist.setDataAvaliacao(Instant.now());
         reservatorio.getChecklists().add(checklist);
         reservatorio.setUltimaSincronizacao(Instant.now());
         reservatorioRepository.salvar(reservatorio);

@@ -2,6 +2,12 @@ package com.manejocaatingueiro.service;
 
 import com.manejocaatingueiro.model.Cultura;
 import com.manejocaatingueiro.model.ClimatologiaMensal;
+import com.manejocaatingueiro.model.CalculoAutossuficiencia;
+import com.manejocaatingueiro.model.ResultadoViabilidade;
+import com.manejocaatingueiro.model.SugestaoPlantio;
+import com.manejocaatingueiro.model.ParametroAgronomico;
+import com.manejocaatingueiro.model.SerieHistoricaClimatica;
+import com.manejocaatingueiro.model.SimulacaoDeficitHidrico;
 import com.manejocaatingueiro.model.FaseCultura;
 import com.manejocaatingueiro.model.PerfilProdutivo;
 import com.manejocaatingueiro.model.ParametrosConsumo;
@@ -93,6 +99,19 @@ public class PlantioService {
         String statusAutonomia = consumoLiquido <= 0 || autonomiaDias > 120 ? "SEGURO"
                 : autonomiaDias >= 60 ? "ATENCAO" : "CRITICO";
 
+        CalculoAutossuficiencia calculo = new CalculoAutossuficiencia();
+        calculo.setUsuarioId(usuario.getId());
+        calculo.setLocalidadeId(localidadeId);
+        calculo.setReservaUtilLitros(reservaUtil);
+        calculo.setConsumoDiarioLitros(consumoDiario);
+        calculo.setEntradasContinuasLitrosDia(perfil.getEntradasContinuasLitrosDia());
+        calculo.setConsumoLiquidoDiarioLitros(Math.max(consumoLiquido, 0));
+        calculo.setAutonomiaDias(autonomiaDias);
+        calculo.setStatusHidrico(statusAutonomia);
+        calculo.setFonteParametrosConsumo(parametros.getFonte());
+        calculo.setVersaoParametrosConsumo(parametros.getVersao());
+        calculo.setDataCalculo(Instant.now());
+
         List<Map<String, Object>> culturas = new ArrayList<>();
         Map<Integer, ClimatologiaMensal> normais = new HashMap<>();
         climaRepository.listarClimatologia(localidadeId).forEach(normal -> normais.put(normal.getMes(), normal));
@@ -132,6 +151,49 @@ public class PlantioService {
                 default -> "Ainda não há série climática confiável suficiente para estimar a viabilidade desta cultura.";
             };
 
+            int anosBaseMinimos = normais.values().stream()
+                    .map(ClimatologiaMensal::getAnosBase)
+                    .filter(java.util.Objects::nonNull)
+                    .min(Integer::compareTo).orElse(0);
+            Double mediaHistorica = normais.values().stream()
+                    .map(ClimatologiaMensal::getPrecipitacaoMediaMm)
+                    .filter(java.util.Objects::nonNull)
+                    .mapToDouble(Double::doubleValue).average().stream().boxed().findFirst().orElse(null);
+            SerieHistoricaClimatica serie = new SerieHistoricaClimatica();
+            serie.setLocalidadeId(localidadeId);
+            serie.setMediaHistorica(mediaHistorica);
+            serie.setChuvaAcumulada(chuvaAcumulada);
+            serie.setChuvaEsperada(chuvaEsperada);
+            serie.setAnosBase(anosBaseMinimos);
+            serie.setDadosSuficientes(climatologiaSuficiente && !chuvasObservadas.isEmpty());
+            serie.setFonte(climatologiaSuficiente ? "Open-Meteo Archive (10 anos)" : "Climatologia indisponível");
+            serie.setDataAtualizacao(Instant.now());
+
+            ResultadoViabilidade resultadoViabilidade = new ResultadoViabilidade();
+            resultadoViabilidade.setCulturaId(cultura.getId());
+            resultadoViabilidade.setCulturaNome(cultura.getNome());
+            resultadoViabilidade.setOfertaHidricaMm(ofertaHidrica);
+            resultadoViabilidade.setDemandaCulturaMm(demandaMm);
+            resultadoViabilidade.setIndiceViabilidade(indiceViabilidade);
+            resultadoViabilidade.setClassificacao(status);
+            resultadoViabilidade.setDadosInsuficientes(dadosInsuficientes);
+            resultadoViabilidade.setChuvaAcumuladaMm(chuvaAcumulada);
+            resultadoViabilidade.setChuvaEsperadaMm(chuvaEsperada);
+            resultadoViabilidade.setAguaReservadaMm(aguaReservadaMm);
+            resultadoViabilidade.setDataPlantio(dataPlantioConsiderada);
+            resultadoViabilidade.setFonteClimatologica(serie.getFonte());
+            resultadoViabilidade.setFonteAgronomica(cultura.getFonte());
+            resultadoViabilidade.setDataCalculo(Instant.now());
+
+            SugestaoPlantio sugestao = new SugestaoPlantio();
+            sugestao.setUsuarioId(usuario.getId());
+            sugestao.setCulturaId(cultura.getId());
+            sugestao.setRecomendacao(status);
+            sugestao.setGrauConfianca(dadosInsuficientes ? "INSUFICIENTE" : "MEDIA");
+            sugestao.setJustificativa(mensagem);
+            sugestao.setFonte(cultura.getFonte() + "; " + serie.getFonte());
+            sugestao.setDataGeracao(Instant.now());
+
             Map<String, Object> item = new HashMap<>();
             item.put("culturaId", cultura.getId());
             item.put("nome", cultura.getNome());
@@ -146,8 +208,12 @@ public class PlantioService {
             item.put("dataPlantioConsiderada", dataPlantioConsiderada.toString());
             item.put("fonteClimatologica", climatologiaSuficiente ? "Open-Meteo Archive (10 anos)" : "Climatologia indisponível");
             item.put("mensagem", mensagem);
+            item.put("grauConfianca", sugestao.getGrauConfianca());
             item.put("fonte", cultura.getFonte());
             item.put("versaoParametros", cultura.getVersaoParametros());
+            item.put("serieHistoricaClimatica", serie);
+            item.put("resultadoViabilidade", resultadoViabilidade);
+            item.put("sugestaoPlantio", sugestao);
             item.put("atualizadoEm", Instant.now().toString());
             culturas.add(item);
         }
@@ -166,6 +232,7 @@ public class PlantioService {
         resultado.put("dadosClimaticosInsuficientes", !climatologiaSuficiente || chuvasObservadas.isEmpty());
         resultado.put("fonteParametrosConsumo", parametros.getFonte());
         resultado.put("versaoParametrosConsumo", parametros.getVersao());
+        resultado.put("calculoAutossuficiencia", calculo);
         resultado.put("culturas", culturas);
         resultado.put("fonteDadosAgronomicos", "Kc/ETc por cultura; duração das fases provisória até validação técnica (RNF11)");
         resultado.put("atualizadoEm", Instant.now().toString());
@@ -234,6 +301,14 @@ public class PlantioService {
         resultado.put("consumoLiquidoDiarioLitros", arredondar(novoConsumoLiquido));
         resultado.put("autonomiaDias", autonomia == null ? null : arredondar(autonomia));
         resultado.put("statusAutonomia", statusAutonomia);
+        SimulacaoDeficitHidrico simulacaoTipada = new SimulacaoDeficitHidrico();
+        simulacaoTipada.setUsuarioId(usuario.getId());
+        simulacaoTipada.setVariacaoConsumo(consumoAdicional);
+        simulacaoTipada.setVariacaoOferta(fatorChuva);
+        simulacaoTipada.setAutonomiaSimulada(autonomia);
+        simulacaoTipada.setResultado(statusAutonomia);
+        simulacaoTipada.setDataSimulacao(Instant.now());
+        resultado.put("simulacaoDeficitHidrico", simulacaoTipada);
         resultado.put("culturas", culturasSimuladas);
         resultado.put("aviso", "Cenário hipotético e consultivo; não altera seu cadastro nem determina sua decisão.");
         resultado.put("atualizadoEm", Instant.now().toString());
@@ -266,21 +341,44 @@ public class PlantioService {
                 || cultura.getEtoReferenciaMmDia() <= 0) {
             return cultura.getDemandaTotalMm();
         }
-        BigDecimal demandaKcDias = BigDecimal.ZERO;
+        BigDecimal demandaTotal = BigDecimal.ZERO;
         int diasCobertos = 0;
-        for (FaseCultura fase : cultura.getFases()) {
-            if (fase.getKc() == null || fase.getDuracaoDias() == null
-                    || fase.getKc() <= 0 || fase.getDuracaoDias() <= 0) {
+        for (ParametroAgronomico parametro : mapearParametrosAgronomicos(cultura)) {
+            if (parametro.getKc() == null || parametro.getDuracaoFase() == null
+                    || parametro.getKc() <= 0 || parametro.getDuracaoFase() <= 0
+                    || parametro.getEto() == null || parametro.getEto() <= 0) {
                 return cultura.getDemandaTotalMm();
             }
-            demandaKcDias = demandaKcDias.add(BigDecimal.valueOf(fase.getKc())
-                    .multiply(BigDecimal.valueOf(fase.getDuracaoDias())));
-            diasCobertos += fase.getDuracaoDias();
+            BigDecimal demandaFase = BigDecimal.valueOf(parametro.getEto())
+                    .multiply(BigDecimal.valueOf(parametro.getKc()))
+                    .multiply(BigDecimal.valueOf(parametro.getDuracaoFase()));
+            demandaTotal = demandaTotal.add(demandaFase);
+            diasCobertos += parametro.getDuracaoFase();
         }
         return diasCobertos >= cultura.getCicloDias()
-                ? BigDecimal.valueOf(cultura.getEtoReferenciaMmDia())
-                .multiply(demandaKcDias).doubleValue()
+                ? demandaTotal.doubleValue()
                 : cultura.getDemandaTotalMm();
+    }
+
+    private List<ParametroAgronomico> mapearParametrosAgronomicos(Cultura cultura) {
+        List<ParametroAgronomico> parametros = new ArrayList<>();
+        int indice = 1;
+        for (FaseCultura fase : cultura.getFases()) {
+            ParametroAgronomico parametro = new ParametroAgronomico();
+            parametro.setIdParametro(indice++);
+            parametro.setCulturaId(cultura.getId());
+            parametro.setFase(fase.getNome());
+            parametro.setKc(fase.getKc());
+            parametro.setEto(cultura.getEtoReferenciaMmDia());
+            parametro.setDuracaoFase(fase.getDuracaoDias());
+            if (fase.getKc() != null && fase.getDuracaoDias() != null && cultura.getEtoReferenciaMmDia() != null) {
+                parametro.setNecessidadeHidricaMm(fase.getKc() * cultura.getEtoReferenciaMmDia() * fase.getDuracaoDias());
+            }
+            parametro.setFonte(cultura.getFonte());
+            parametro.setVersao(cultura.getVersaoParametros());
+            parametros.add(parametro);
+        }
+        return parametros;
     }
 
     private Double calcularChuvaEsperada(LocalDate inicio, LocalDate fim,

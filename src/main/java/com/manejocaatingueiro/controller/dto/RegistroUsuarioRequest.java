@@ -14,6 +14,7 @@ public record RegistroUsuarioRequest(
         PerfilUsuario perfil,
         FonteAgua abastecimento,
         Integer localidadeId,
-        PerfilProdutivo perfilProdutivo
+        PerfilProdutivo perfilProdutivo,
+        Boolean consentimentoLocalizacao
 ) {
 }
